@@ -15,7 +15,9 @@
 import logging
 from os import path
 
+import backoff
 import boto3
+from botocore.exceptions import ClientError
 
 LOG = logging.getLogger(__name__)
 MAX_PACKAGE_SIZE = 50000000
@@ -85,16 +87,19 @@ class PackageUploader(object):
                 Runtime=self._config.runtime,
             )
         else:
-            response = self._lambda_client.update_function_configuration(
-                FunctionName=self._config.name,
-                Role=self._config.role,
-                Description=self._config.description,
-                Timeout=self._config.timeout,
-                MemorySize=self._config.memory,
-                VpcConfig=self._vpc_config,
-                Environment=environment,
-                TracingConfig=self._config.tracing
-            )
+            @backoff.on_exception(backoff.expo, ClientError)
+            def update_image_configuration():
+                return self._lambda_client.update_function_configuration(
+                    FunctionName=self._config.name,
+                    Role=self._config.role,
+                    Description=self._config.description,
+                    Timeout=self._config.timeout,
+                    MemorySize=self._config.memory,
+                    VpcConfig=self._vpc_config,
+                    Environment=environment,
+                    TracingConfig=self._config.tracing
+                )
+            response = update_image_configuration()
         LOG.debug("AWS update_function_configuration response: %s"
                   % response)
 

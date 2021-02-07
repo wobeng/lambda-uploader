@@ -108,6 +108,7 @@ class PackageUploader(object):
 
         @backoff.on_exception(backoff.expo, ClientError)
         def publish():
+            print('publishing')
             # Publish the version config and upload update if needed
             resp = self._lambda_client.publish_version(
                 FunctionName=self._config.name,

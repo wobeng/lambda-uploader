@@ -103,7 +103,7 @@ class PackageUploader(object):
     def upload_new(self, pkg):
         environment = {'Variables': self._config.variables}
         code = {}
-        if not pkg:
+        if pkg:
             if self._config.s3_bucket:
                 code = {'S3Bucket': self._config.s3_bucket,
                         'S3Key': self._config.s3_package_name()}

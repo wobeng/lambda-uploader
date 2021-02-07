@@ -41,35 +41,6 @@ class PackageUploader(object):
 
     def upload_existing(self, pkg):
         environment = {'Variables': self._config.variables}
-
-        LOG.debug('running update_function_configuration')
-        if pkg:
-            response = self._lambda_client.update_function_configuration(
-                FunctionName=self._config.name,
-                Handler=self._config.handler,
-                Role=self._config.role,
-                Description=self._config.description,
-                Timeout=self._config.timeout,
-                MemorySize=self._config.memory,
-                VpcConfig=self._vpc_config,
-                Environment=environment,
-                TracingConfig=self._config.tracing,
-                Runtime=self._config.runtime,
-            )
-        else:
-            response = self._lambda_client.update_function_configuration(
-                FunctionName=self._config.name,
-                Role=self._config.role,
-                Description=self._config.description,
-                Timeout=self._config.timeout,
-                MemorySize=self._config.memory,
-                VpcConfig=self._vpc_config,
-                Environment=environment,
-                TracingConfig=self._config.tracing
-            )
-        LOG.debug("AWS update_function_configuration response: %s"
-                  % response)
-
         if pkg:
             self._validate_package_size(pkg.zip_file)
             with open(pkg.zip_file, "rb") as fil:
@@ -99,6 +70,34 @@ class PackageUploader(object):
             )
         LOG.debug("AWS update_function_code response: %s"
                   % conf_update_resp)
+
+        LOG.debug('running update_function_configuration')
+        if pkg:
+            response = self._lambda_client.update_function_configuration(
+                FunctionName=self._config.name,
+                Handler=self._config.handler,
+                Role=self._config.role,
+                Description=self._config.description,
+                Timeout=self._config.timeout,
+                MemorySize=self._config.memory,
+                VpcConfig=self._vpc_config,
+                Environment=environment,
+                TracingConfig=self._config.tracing,
+                Runtime=self._config.runtime,
+            )
+        else:
+            response = self._lambda_client.update_function_configuration(
+                FunctionName=self._config.name,
+                Role=self._config.role,
+                Description=self._config.description,
+                Timeout=self._config.timeout,
+                MemorySize=self._config.memory,
+                VpcConfig=self._vpc_config,
+                Environment=environment,
+                TracingConfig=self._config.tracing
+            )
+        LOG.debug("AWS update_function_configuration response: %s"
+                  % response)
 
         version = response.get('Version')
         # Publish the version config and upload update if needed
@@ -148,7 +147,6 @@ class PackageUploader(object):
                 VpcConfig=self._vpc_config,
                 Environment=environment,
                 TracingConfig=self._config.tracing,
-                PackageType='Zip' if pkg else 'Image'
             )
         else:
             response = self._lambda_client.create_function(

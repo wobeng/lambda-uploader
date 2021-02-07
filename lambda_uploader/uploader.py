@@ -12,10 +12,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import boto3
 import logging
-
 from os import path
+
+import boto3
 
 LOG = logging.getLogger(__name__)
 MAX_PACKAGE_SIZE = 50000000
@@ -23,6 +23,7 @@ MAX_PACKAGE_SIZE = 50000000
 
 class PackageUploader(object):
     '''TODO: Should we decouple the config from the Object Init'''
+
     def __init__(self, config, profile_name):
         self._config = config
         self._vpc_config = self._format_vpc_config()
@@ -37,6 +38,7 @@ class PackageUploader(object):
 
     returns the package version
     '''
+
     def upload_existing(self, pkg):
         environment = {'Variables': self._config.variables}
         if pkg:
@@ -88,8 +90,8 @@ class PackageUploader(object):
         # Publish the version after upload and config update if needed
         if self._config.publish:
             resp = self._lambda_client.publish_version(
-                    FunctionName=self._config.name,
-                    )
+                FunctionName=self._config.name,
+            )
             LOG.debug("AWS publish_version response: %s" % resp)
             version = resp.get('Version')
 
@@ -100,6 +102,7 @@ class PackageUploader(object):
 
     returns the package version
     '''
+
     def upload_new(self, pkg):
         environment = {'Variables': self._config.variables}
         code = {}
@@ -131,6 +134,7 @@ class PackageUploader(object):
             VpcConfig=self._vpc_config,
             Environment=environment,
             TracingConfig=self._config.tracing,
+            PackageType='Zip' if pkg else 'Image'
         )
         LOG.debug("AWS create_function response: %s" % response)
 
@@ -140,11 +144,12 @@ class PackageUploader(object):
     Auto determines whether the function exists or not and calls
     the appropriate method (upload_existing or upload_new).
     '''
+
     def upload(self, pkg):
         existing_function = True
         try:
             get_resp = self._lambda_client.get_function_configuration(
-                    FunctionName=self._config.name)
+                FunctionName=self._config.name)
             LOG.debug("AWS get_function_configuration response: %s" % get_resp)
         except:  # noqa: E722
             existing_function = False
@@ -159,6 +164,7 @@ class PackageUploader(object):
     Create/update an alias to point to the package. Raises an
     exception if the package has not been uploaded.
     '''
+
     def alias(self):
         # if self.version is still None raise exception
         if self.version is None:
@@ -173,9 +179,10 @@ class PackageUploader(object):
     Pulls down the current list of aliases and checks to see if
     an alias exists.
     '''
+
     def _alias_exists(self):
         resp = self._lambda_client.list_aliases(
-                FunctionName=self._config.name)
+            FunctionName=self._config.name)
 
         for alias in resp.get('Aliases'):
             if alias.get('Name') == self._config.alias:
@@ -183,25 +190,27 @@ class PackageUploader(object):
         return False
 
     '''Creates alias'''
+
     def _create_alias(self):
         LOG.debug("Creating new alias %s" % self._config.alias)
         resp = self._lambda_client.create_alias(
-                FunctionName=self._config.name,
-                Name=self._config.alias,
-                FunctionVersion=self.version,
-                Description=self._config.alias_description,
-                )
+            FunctionName=self._config.name,
+            Name=self._config.alias,
+            FunctionVersion=self.version,
+            Description=self._config.alias_description,
+        )
         LOG.debug("AWS create_alias response: %s" % resp)
 
     '''Update alias'''
+
     def _update_alias(self):
         LOG.debug("Updating alias %s" % self._config.alias)
         resp = self._lambda_client.update_alias(
-                FunctionName=self._config.name,
-                Name=self._config.alias,
-                FunctionVersion=self.version,
-                Description=self._config.alias_description,
-                )
+            FunctionName=self._config.name,
+            Name=self._config.alias,
+            FunctionVersion=self.version,
+            Description=self._config.alias_description,
+        )
         LOG.debug("AWS update_alias response: %s" % resp)
 
     def _validate_package_size(self, pkg):

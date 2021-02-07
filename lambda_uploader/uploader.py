@@ -39,24 +39,31 @@ class PackageUploader(object):
     '''
     def upload_existing(self, pkg):
         environment = {'Variables': self._config.variables}
-        self._validate_package_size(pkg.zip_file)
-        with open(pkg.zip_file, "rb") as fil:
-            zip_file = fil.read()
+        if pkg:
+            self._validate_package_size(pkg.zip_file)
+            with open(pkg.zip_file, "rb") as fil:
+                zip_file = fil.read()
 
-        LOG.debug('running update_function_code')
-        conf_update_resp = None
-        if self._config.s3_bucket:
-            self._upload_s3(pkg.zip_file)
-            conf_update_resp = self._lambda_client.update_function_code(
-                FunctionName=self._config.name,
-                S3Bucket=self._config.s3_bucket,
-                S3Key=self._config.s3_package_name(),
-                Publish=False,
-            )
+            LOG.debug('running update_function_code')
+            conf_update_resp = None
+            if self._config.s3_bucket:
+                self._upload_s3(pkg.zip_file)
+                conf_update_resp = self._lambda_client.update_function_code(
+                    FunctionName=self._config.name,
+                    S3Bucket=self._config.s3_bucket,
+                    S3Key=self._config.s3_package_name(),
+                    Publish=False,
+                )
+            else:
+                conf_update_resp = self._lambda_client.update_function_code(
+                    FunctionName=self._config.name,
+                    ZipFile=zip_file,
+                    Publish=False,
+                )
         else:
             conf_update_resp = self._lambda_client.update_function_code(
                 FunctionName=self._config.name,
-                ZipFile=zip_file,
+                ImageUri=self._config.image_uri,
                 Publish=False,
             )
         LOG.debug("AWS update_function_code response: %s"
@@ -96,15 +103,18 @@ class PackageUploader(object):
     def upload_new(self, pkg):
         environment = {'Variables': self._config.variables}
         code = {}
-        if self._config.s3_bucket:
-            code = {'S3Bucket': self._config.s3_bucket,
-                    'S3Key': self._config.s3_package_name()}
-            self._upload_s3(pkg.zip_file)
+        if not pkg:
+            if self._config.s3_bucket:
+                code = {'S3Bucket': self._config.s3_bucket,
+                        'S3Key': self._config.s3_package_name()}
+                self._upload_s3(pkg.zip_file)
+            else:
+                self._validate_package_size(pkg.zip_file)
+                with open(pkg.zip_file, "rb") as fil:
+                    zip_file = fil.read()
+                code = {'ZipFile': zip_file}
         else:
-            self._validate_package_size(pkg.zip_file)
-            with open(pkg.zip_file, "rb") as fil:
-                zip_file = fil.read()
-            code = {'ZipFile': zip_file}
+            code = {'ImageUri': self._config.image_uri}
 
         LOG.debug('running create_function_code')
         response = self._lambda_client.create_function(

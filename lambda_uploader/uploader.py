@@ -15,7 +15,9 @@
 import logging
 from os import path
 
+import backoff
 import boto3
+from botocore.exceptions import ClientError
 
 LOG = logging.getLogger(__name__)
 MAX_PACKAGE_SIZE = 50000000
@@ -71,42 +73,50 @@ class PackageUploader(object):
         LOG.debug("AWS update_function_code response: %s"
                   % conf_update_resp)
 
-        LOG.debug('running update_function_configuration')
-        if pkg:
-            response = self._lambda_client.update_function_configuration(
-                FunctionName=self._config.name,
-                Handler=self._config.handler,
-                Role=self._config.role,
-                Description=self._config.description,
-                Timeout=self._config.timeout,
-                MemorySize=self._config.memory,
-                VpcConfig=self._vpc_config,
-                Environment=environment,
-                TracingConfig=self._config.tracing,
-                Runtime=self._config.runtime,
-            )
-        else:
-            response = self._lambda_client.update_function_configuration(
-                FunctionName=self._config.name,
-                Role=self._config.role,
-                Description=self._config.description,
-                Timeout=self._config.timeout,
-                MemorySize=self._config.memory,
-                VpcConfig=self._vpc_config,
-                Environment=environment,
-                TracingConfig=self._config.tracing
-            )
-        LOG.debug("AWS update_function_configuration response: %s"
-                  % response)
+        @backoff.on_exception(backoff.expo, ClientError)
+        def update_config():
+            LOG.debug('running update_function_configuration')
+            if pkg:
+                response = self._lambda_client.update_function_configuration(
+                    FunctionName=self._config.name,
+                    Handler=self._config.handler,
+                    Role=self._config.role,
+                    Description=self._config.description,
+                    Timeout=self._config.timeout,
+                    MemorySize=self._config.memory,
+                    VpcConfig=self._vpc_config,
+                    Environment=environment,
+                    TracingConfig=self._config.tracing,
+                    Runtime=self._config.runtime,
+                )
+            else:
+                response = self._lambda_client.update_function_configuration(
+                    FunctionName=self._config.name,
+                    Role=self._config.role,
+                    Description=self._config.description,
+                    Timeout=self._config.timeout,
+                    MemorySize=self._config.memory,
+                    VpcConfig=self._vpc_config,
+                    Environment=environment,
+                    TracingConfig=self._config.tracing
+                )
+            LOG.debug("AWS update_function_configuration response: %s"
+                      % response)
+            return response
 
-        version = response.get('Version')
-        # Publish the version config and upload update if needed
-        if self._config.publish:
+        version = update_config().get('Version')
+
+        @backoff.on_exception(backoff.expo, ClientError)
+        def publish():
+            # Publish the version config and upload update if needed
             resp = self._lambda_client.publish_version(
                 FunctionName=self._config.name,
             )
             LOG.debug("AWS publish_version response: %s" % resp)
-            version = resp.get('Version')
+            return resp.get('Version')
+
+        if self._config.publish:
+            version = publish()
 
         return version
 

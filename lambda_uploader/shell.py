@@ -171,7 +171,7 @@ def main(arv=None):
                         default=None, help=alias_help)
     parser.add_argument('--alias-description', '-m', dest='alias_description',
                         default=None, help='alias description')
-    parser.add_argument('--image-uri', '-s', dest='image_uri',
+    parser.add_argument('--image-uri', '-i', dest='image_uri',
                         help='uri of a container image in the amazon ecr registry to deploy',
                         default=None)
     parser.add_argument('--s3-bucket', '-s', dest='s3_bucket',

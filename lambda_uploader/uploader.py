@@ -115,6 +115,7 @@ class PackageUploader(object):
                 code = {'ZipFile': zip_file}
         else:
             code = {'ImageUri': self._config.image_uri}
+        print(self._config)
         print(code)
         LOG.debug('running create_function_code')
         response = self._lambda_client.create_function(

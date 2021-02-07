@@ -71,18 +71,30 @@ class PackageUploader(object):
         LOG.debug("AWS update_function_code response: %s"
                   % conf_update_resp)
         LOG.debug('running update_function_configuration')
-        response = self._lambda_client.update_function_configuration(
-            FunctionName=self._config.name,
-            Handler=self._config.handler,
-            Role=self._config.role,
-            Description=self._config.description,
-            Timeout=self._config.timeout,
-            MemorySize=self._config.memory,
-            VpcConfig=self._vpc_config,
-            Environment=environment,
-            TracingConfig=self._config.tracing,
-            Runtime=self._config.runtime,
-        )
+        if pkg:
+            response = self._lambda_client.update_function_configuration(
+                FunctionName=self._config.name,
+                Handler=self._config.handler,
+                Role=self._config.role,
+                Description=self._config.description,
+                Timeout=self._config.timeout,
+                MemorySize=self._config.memory,
+                VpcConfig=self._vpc_config,
+                Environment=environment,
+                TracingConfig=self._config.tracing,
+                Runtime=self._config.runtime,
+            )
+        else:
+            response = self._lambda_client.update_function_configuration(
+                FunctionName=self._config.name,
+                Role=self._config.role,
+                Description=self._config.description,
+                Timeout=self._config.timeout,
+                MemorySize=self._config.memory,
+                VpcConfig=self._vpc_config,
+                Environment=environment,
+                TracingConfig=self._config.tracing
+            )
         LOG.debug("AWS update_function_configuration response: %s"
                   % response)
 
@@ -118,24 +130,38 @@ class PackageUploader(object):
                 code = {'ZipFile': zip_file}
         else:
             code = {'ImageUri': self._config.image_uri}
-        print(self._config)
-        print(code)
+
         LOG.debug('running create_function_code')
-        response = self._lambda_client.create_function(
-            FunctionName=self._config.name,
-            Runtime=self._config.runtime,
-            Handler=self._config.handler,
-            Role=self._config.role,
-            Code=code,
-            Description=self._config.description,
-            Timeout=self._config.timeout,
-            MemorySize=self._config.memory,
-            Publish=self._config.publish,
-            VpcConfig=self._vpc_config,
-            Environment=environment,
-            TracingConfig=self._config.tracing,
-            PackageType='Zip' if pkg else 'Image'
-        )
+        if pkg:
+            response = self._lambda_client.create_function(
+                FunctionName=self._config.name,
+                Runtime=self._config.runtime,
+                Handler=self._config.handler,
+                Role=self._config.role,
+                Code=code,
+                Description=self._config.description,
+                Timeout=self._config.timeout,
+                MemorySize=self._config.memory,
+                Publish=self._config.publish,
+                VpcConfig=self._vpc_config,
+                Environment=environment,
+                TracingConfig=self._config.tracing,
+                PackageType='Zip' if pkg else 'Image'
+            )
+        else:
+            response = self._lambda_client.create_function(
+                FunctionName=self._config.name,
+                Role=self._config.role,
+                Code=code,
+                Description=self._config.description,
+                Timeout=self._config.timeout,
+                MemorySize=self._config.memory,
+                Publish=self._config.publish,
+                VpcConfig=self._vpc_config,
+                Environment=environment,
+                TracingConfig=self._config.tracing,
+                PackageType='Image'
+            )
         LOG.debug("AWS create_function response: %s" % response)
 
         return response.get('Version')
